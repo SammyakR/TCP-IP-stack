@@ -2,8 +2,9 @@
 #ifndef __GRAPH__
 #define __GRAPH__
 
-#include<assert.h>
+#include <assert.h>
 #include "gluethread/glthread.h"
+#include "net.h"
 
 #define NODE_NAME_SIZE 16
 #define IF_NAME_SIZE 16
@@ -13,10 +14,11 @@
 typedef struct node_ node_t;
 typedef struct link_ link_t;
 
-typedef struct interface{
+typedef struct interface_ {
     char if_name[IF_NAME_SIZE];
     struct node_ *att_node;
     struct link_ *link;
+    intf_nw_props_t intf_nw_props;
 } interface_t;
 
 struct link_{
@@ -30,6 +32,7 @@ struct node_{
     char node_name[NODE_NAME_SIZE];
     interface_t *intf[MAX_INTF_PER_NODE];
     glthread_t graph_glue;
+    node_nw_props_t node_nw_props;
 };
 
 
@@ -79,6 +82,23 @@ get_nbr_node(interface_t *interface){
     else
         return link->intf1.att_node;
 }
+
+static inline interface_t *
+get_node_if_by_name(node_t *node, char *if_name){
+
+    int i ;
+    interface_t *intf;
+
+    for( i = 0 ; i < MAX_INTF_PER_NODE; i++){
+        intf = node->intf[i];
+        if(!intf) return NULL;
+        if(strncmp(intf->if_name, if_name, IF_NAME_SIZE) == 0){
+            return intf;
+        }
+    }
+    return NULL;
+}
+
 
 
 /*Display Routines*/
