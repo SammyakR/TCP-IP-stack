@@ -2,6 +2,9 @@
 #include "graph.h"
 #include "net.h"
 
+extern
+void network_start_pkt_reciever_thread(graph_t *topo);
+
 graph_t *
 build_first_topo(){
 
@@ -49,6 +52,8 @@ build_first_topo(){
     node_set_intf_ip_address(R2_re, "eth0/3", "30.1.1.2", 24);
     node_set_intf_ip_address(R2_re, "eth0/5", "40.1.1.2", 24);
     
+    network_start_pkt_reciever_thread(topo);
+
     return topo;
 }
 

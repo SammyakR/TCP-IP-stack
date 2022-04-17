@@ -7,6 +7,7 @@ OBJS= gluethread/glthread.o \
 		topologies.o 	    \
 		net.o               \
 		nwcli.o 			\
+		comm.o
 
 
 
@@ -30,6 +31,9 @@ net.o : net.c
 
 newcli.o : newcli.c	
 	${CC} ${CFLAGS} -c   newcli.c -o nwcli.o
+
+comm.o : comm.c
+	${CC} ${CFLAGS} -c -I . comm.c -o comm.o
 
 CommandParser/libcli.a:
 	(cd CommandParser; make)
