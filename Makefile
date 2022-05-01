@@ -6,8 +6,10 @@ OBJS= gluethread/glthread.o \
 		graph.o             \
 		topologies.o 	    \
 		net.o               \
+		utils.o 			\
 		nwcli.o 			\
-		comm.o
+		comm.o				\
+		Layer2/layer2.o     \
 
 
 
@@ -29,11 +31,18 @@ topologies.o : topologies.c
 net.o : net.c
 	${CC} ${CFLAGS} -c -I . net.c -o net.o
 
+utils.o : utils.c
+	${CC} ${CFLAGS} -c -I . utils.c -o utils.o
+
 newcli.o : newcli.c	
 	${CC} ${CFLAGS} -c   newcli.c -o nwcli.o
 
 comm.o : comm.c
 	${CC} ${CFLAGS} -c -I . comm.c -o comm.o
+
+Layer2/layer2.o:Layer2/layer2.c
+	${CC} ${CFLAGS} -c -I . Layer2/layer2.c -o Layer2/layer2.o
+
 
 CommandParser/libcli.a:
 	(cd CommandParser; make)
@@ -42,6 +51,7 @@ clean:
 	rm *.o 
 	rm gluethread/glthread.o 
 	rm *exe
+	rm Layer2/*.o
 	(cd CommandParser;make clean)
 
 all:

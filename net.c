@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <memory.h>
 #include "utils.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 
 /*
@@ -56,17 +58,42 @@ bool_t
 node_set_intf_ip_address(node_t *node, char *local_if,
                                 char *ip_addr, char mask){
 
-interface_t *interface = get_node_if_by_name(node, local_if);
-if(!interface) assert(0);
+    interface_t *interface = get_node_if_by_name(node, local_if);
+    if(!interface) assert(0);
 
-strncpy(IF_IP(interface), ip_addr, 16);
-IF_IP(interface)[15] = '\0';
-interface->intf_nw_props.mask = mask;
-interface->intf_nw_props.is_ipadd_config = TRUE;
+    strncpy(IF_IP(interface), ip_addr, 16);
+    IF_IP(interface)[15] = '\0';
+    interface->intf_nw_props.mask = mask;
+    interface->intf_nw_props.is_ipadd_config = TRUE;
 
 
-return TRUE;
+    return TRUE;
+}
 
+char *
+pkt_buffer_shift_right(char *pkt, unsigned int pkt_size, 
+                       unsigned int total_buffer_size)
+{
+        char *temp = NULL;
+        return temp;
+}
+
+interface_t *
+node_get_matching_subnet_interface(node_t *node, char *ip_addr){
+    char ip_subnet[32];
+    char if_subnet[32];
+    for(int i=0; i<MAX_INTF_PER_NODE; i++){
+        char mask = node->intf[i]->intf_nw_props.mask;
+
+        apply_mask(ip_addr, mask, ip_subnet);
+        apply_mask(node->intf[i]->intf_nw_props.ip_add.ip_addr, 
+                                    mask, if_subnet);
+        
+        if(strcmp(if_subnet, ip_subnet) == 0)
+            return node -> intf[i];
+    }
+
+    return NULL;
 }
 
 /*
@@ -90,7 +117,8 @@ void dump_intf_props(interface_t *interface){
     dump_interface(interface);
 
     if(interface->intf_nw_props.is_ipadd_config){
-        printf("\t IP Addr = %s/%u", IF_IP(interface), interface->intf_nw_props.mask);
+        printf("\t IP Addr = %s/%u", IF_IP(interface), 
+                            interface->intf_nw_props.mask);
     }
     else{
         printf("\t IP Addr = %s/%u", "Nil", 0);
@@ -126,3 +154,23 @@ void dump_nw_graph(graph_t *graph){
 }
 
 
+/*
+==============================
+    Address Conversion
+==============================
+*/
+void 
+ip_addr_n_to_p(unsigned int ip_addr, char *ip_add_str)
+{
+    ip_addr = htonl(ip_addr);
+    inet_ntop(AF_INET, &ip_addr, ip_add_str, 16);
+}
+
+unsigned int
+ip_addr_p_to_n(char *ip_addr)
+{
+    unsigned int decimal_rep;
+    inet_pton(AF_INET, ip_addr, &decimal_rep);
+    decimal_rep = htonl(decimal_rep);
+    return decimal_rep;
+}

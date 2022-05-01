@@ -52,10 +52,8 @@ graph_t *
 create_new_graph(char *topology_name);
 
 void
-insert_link_between_two_nodes(node_t *node1, 
-                             node_t *node2,
-                             char *from_if_name, 
-                             char *to_if_name, 
+insert_link_between_two_nodes(node_t *node1, node_t *node2,
+                             char *from_if_name, char *to_if_name, 
                              unsigned int cost);
 
 
