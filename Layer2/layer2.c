@@ -6,10 +6,14 @@
 #include "../tcpconst.h"
 
 
-void
-layer2_frame_recv(node_t *node, interface_t *interface,
-                    char *pkt, unsigned int pkt_size){
+extern void
+l2_switch_recv_frame(node_t *node, char *src_mac, char *if_name);
 
+static void
+promote_pkt_to_layer3(node_t *node, interface_t *interface,
+                         char *pkt, unsigned int pkt_size){
+
+    
 }
 
 void
@@ -90,9 +94,6 @@ dump_arp_table(arp_table_t *arp_table){
             arp_entry->oif_name);
     }ITERATE_GLTHREAD_END(&arp_table->arp_entries, curr);
 }
-
-
-
 
 
 void
@@ -219,3 +220,54 @@ process_arp_broadcast_request(node_t *node, interface_t *iif,
 
 }
 
+
+void
+layer2_frame_recv(node_t *node, interface_t *interface, 
+                    char *pkt, unsigned int pkt_size){
+    
+    ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *)pkt;
+    if(l2_frame_recv_qualify_on_interface(interface, ethernet_hdr) == FALSE){
+        printf("L2 frame rejected");
+        return;
+    }
+
+    printf("L2 frame accepted");
+    if(IS_INTF_L3_MODE(interface)){
+        switch(ethernet_hdr->type){
+            case ARP_MSG:
+                {
+                    arp_hdr_t *arp_hdr = (arp_hdr_t *)(ethernet_hdr->payload);
+                    switch(arp_hdr->op_code){
+                        case ARP_BROAD_REQ:
+                            process_arp_broadcast_request(node, interface, ethernet_hdr);
+                            break;
+                        case ARP_REPLY:
+                            process_arp_reply_msg(node, interface, ethernet_hdr);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            default:
+                promote_pkt_to_layer3(node, interface, pkt, pkt_size);
+                break;
+        }
+    }
+    else if(IF_L2_MODE(interface) == ACCESS || IF_L2_MODE(interface) == TRUNK){
+        l2_switch_recv_frame(interface, pkt, pkt_size);
+    }
+
+}
+
+
+
+void
+node_set_intf_l2_mode(node_t *node, char *intf_name, 
+                        intf_l2_mode_t intf_l2_mode){
+
+    interface_t *interface = get_node_if_by_name(node, intf_name);
+    assert(interface);
+
+    IF_L2_MODE(interface) =  intf_l2_mode;
+}

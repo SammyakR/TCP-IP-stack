@@ -10,6 +10,7 @@ OBJS= gluethread/glthread.o \
 		nwcli.o 			\
 		comm.o				\
 		Layer2/layer2.o     \
+		Layer2/l2switch.o   
 
 
 
@@ -43,6 +44,8 @@ comm.o : comm.c
 Layer2/layer2.o:Layer2/layer2.c
 	${CC} ${CFLAGS} -c -I . Layer2/layer2.c -o Layer2/layer2.o
 
+Layer2/l2switch.o: Layer2/l2switch.c
+	${CC} ${CFLAGS} -c -I . Layer2/l2switch.c -o Layer2/l2switch.o
 
 CommandParser/libcli.a:
 	(cd CommandParser; make)

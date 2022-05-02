@@ -52,7 +52,7 @@ ALLOC_ETH_HDR_WITH_PAYLOAD(char *pkt, unsigned int pkt_size){
 static inline bool_t
 l2_frame_recv_qualify_on_interface(interface_t *interface,
                                     ethernet_hdr_t *ethernet_hdr){
-    if(IS_INIT_L3_MODE(interface))
+    if(IS_INTF_L3_MODE(interface))
         return FALSE;
 
     if(memcmp(IF_MAC(interface), ethernet_hdr->dst_mac.mac, 
