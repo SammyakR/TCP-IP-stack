@@ -18,7 +18,7 @@ promote_pkt_to_layer3(node_t *node, interface_t *interface,
 
 void
 init_arp_table(arp_table_t **arp_table){
-    *arp_table = (arp_table_t*)calloc(1, sizeof(arp_table_t));
+    *arp_table = calloc(1, sizeof(arp_table_t));
     init_glthread(&((*arp_table)->arp_entries));
 }
 
@@ -152,12 +152,12 @@ void
 send_arp_broadcast_request(node_t *node, 
         interface_t *oif, char *ip_addr){
     
-    unsigned int payload_size = sizeof(arp_hdr_t);
+    
     ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *) calloc(1, 
-                    ETH_HDR_SIZE_EXCL_PAYLOAD + payload_size);
+                    sizeof(ethernet_hdr_t) + sizeof(arp_hdr_t));
 
     if(!oif){
-        oif=node_get_matching_subnet_interface(node, ip_addr);
+        oif = node_get_matching_subnet_interface(node, ip_addr);
         if(!oif){
             printf("Error: %s : No eligible subnet for ARP resolution Ip: %s",
                         node->node_name, ip_addr);
@@ -165,6 +165,7 @@ send_arp_broadcast_request(node_t *node,
         }
     }
     /*STEP 1 : Prepare eth hdr */
+    printf("hittin line 168\n");
     layer2_fill_with_broadcast_mac(ethernet_hdr->dst_mac.mac);
     memcpy(ethernet_hdr->src_mac.mac, IF_MAC(oif), sizeof(mac_add_t));
     ethernet_hdr->type=ARP_MSG;
@@ -181,14 +182,14 @@ send_arp_broadcast_request(node_t *node,
     memcpy(arp_hdr->src_mac.mac, IF_MAC(oif), sizeof(mac_add_t));
     inet_pton(AF_INET, IF_IP(oif), &arp_hdr->src_ip);
     arp_hdr->src_ip = htonl(arp_hdr->src_ip);
-
+    printf("hit line 185\n");
     memset(arp_hdr->dst_mac.mac, 0, sizeof(mac_add_t));
     /* Never use ethernet->FCS =0 */
     ETH_FCS(ethernet_hdr, sizeof(arp_hdr_t)) = 0;
-
+    
     /* STEP 3 : Dispatch the ARP Broadcast request */
     send_pkt_out((char *)ethernet_hdr, 
-                    ETH_HDR_SIZE_EXCL_PAYLOAD + payload_size, oif);
+                    sizeof(ethernet_hdr_t) + sizeof(arp_hdr_t), oif);
     
     free(ethernet_hdr);
 
@@ -227,7 +228,7 @@ layer2_frame_recv(node_t *node, interface_t *interface,
     
     ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *)pkt;
     if(l2_frame_recv_qualify_on_interface(interface, ethernet_hdr) == FALSE){
-        printf("L2 frame rejected");
+        printf("L2 frame rejected\n");
         return;
     }
 

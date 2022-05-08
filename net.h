@@ -37,11 +37,12 @@ typedef struct node_nw_props_
     ip_add_t lb_addr;
 } node_nw_props_t;
 
-extern void
-init_arp_table(arp_table_t **arp_table);
+extern void init_arp_table(arp_table_t **arp_table);
+
 
 static inline void
 init_node_nw_props(node_nw_props_t *node_nw_prop){
+    node_nw_prop->flags = 0;
     node_nw_prop->is_lb_addr_config = FALSE;
     memset(node_nw_prop->lb_addr.ip_addr, 0, 16);
     init_arp_table(&(node_nw_prop->arp_table));
@@ -81,7 +82,8 @@ typedef struct intf_nw_props_
 
 static inline void
 init_intf_nw_props(intf_nw_props_t *intf_nw_props){
-    memset(intf_nw_props->mac_add.mac, 0, 8);
+    memset(intf_nw_props->mac_add.mac, 0, 
+            sizeof(intf_nw_props->mac_add.mac));
     intf_nw_props->is_ipadd_config = FALSE;
     memset(intf_nw_props->ip_add.ip_addr, 0, 16);
     intf_nw_props->mask = 0;

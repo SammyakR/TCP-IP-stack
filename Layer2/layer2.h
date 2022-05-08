@@ -52,18 +52,30 @@ ALLOC_ETH_HDR_WITH_PAYLOAD(char *pkt, unsigned int pkt_size){
 static inline bool_t
 l2_frame_recv_qualify_on_interface(interface_t *interface,
                                     ethernet_hdr_t *ethernet_hdr){
-    if(IS_INTF_L3_MODE(interface))
+    
+    printf("--> 0 \n");
+    if(!IS_INTF_L3_MODE(interface)){
         return FALSE;
-
-    if(memcmp(IF_MAC(interface), ethernet_hdr->dst_mac.mac, 
+    }
+    printf("--> 1 \n");
+    if(!IS_INTF_L3_MODE(interface) && 
+        (IF_L2_MODE(interface) == ACCESS ||
+        IF_L2_MODE(interface) == TRUNK)){
+     
+        return TRUE;
+    }
+    printf("--> 2 \n");
+    if(IS_INTF_L3_MODE(interface) && 
+        memcmp(IF_MAC(interface), ethernet_hdr->dst_mac.mac, 
                 sizeof(mac_add_t)) == 0){
         return TRUE;
     }
-
-    if(IS_MAC_BROADCAST_ADDR(ethernet_hdr->dst_mac.mac)){
+    printf("--> 3 \n");
+    if(IS_INTF_L3_MODE(interface) && 
+        IS_MAC_BROADCAST_ADDR(ethernet_hdr->dst_mac.mac)){
         return TRUE;
     }
-
+    printf("--> 4 \n");
     return FALSE;
     
 }

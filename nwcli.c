@@ -74,7 +74,8 @@ arp_handler(param_t *param, ser_buff_t *tlv_buff,
 static int
 show_arp_handler(param_t *param, ser_buff_t *tlv_buf,
                 op_mode enable_or_disable){
-        node_t *node;
+    
+    node_t *node;
     char *node_name;
     tlv_struct_t *tlv = NULL;
     
@@ -85,13 +86,8 @@ show_arp_handler(param_t *param, ser_buff_t *tlv_buf,
     }TLV_LOOP_END;
 
     node = get_node_by_node_name(topo, node_name);
-    if(node){
-        dump_node(node);
-        dump_arp_table(node->node_nw_props.arp_table);
-    }
-    else{
-        printf("****node seems empty****");
-    }
+    dump_arp_table(node->node_nw_props.arp_table);
+    
     return 0;
 }
 
