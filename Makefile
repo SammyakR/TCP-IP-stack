@@ -10,7 +10,8 @@ OBJS= gluethread/glthread.o \
 		nwcli.o 			\
 		comm.o				\
 		Layer2/layer2.o     \
-		Layer2/l2switch.o   
+		Layer2/l2switch.o   \
+		pkt_dump.o
 
 
 
@@ -41,6 +42,9 @@ newcli.o : newcli.c
 comm.o : comm.c
 	${CC} ${CFLAGS} -c -I . comm.c -o comm.o
 
+pkt_dump.o : pkt_dump.c
+	${CC} ${CFLAGS} -c -I . pkt_dump.c -o pkt_dump.o
+
 Layer2/layer2.o:Layer2/layer2.c
 	${CC} ${CFLAGS} -c -I . Layer2/layer2.c -o Layer2/layer2.o
 
@@ -53,9 +57,9 @@ CommandParser/libcli.a:
 clean:
 	rm *.o 
 	rm gluethread/glthread.o 
-	rm *exe
 	rm Layer2/*.o
 	(cd CommandParser;make clean)
+	rm *exe
 
 all:
 	(cd CommandParser; make)
