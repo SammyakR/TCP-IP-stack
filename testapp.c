@@ -4,6 +4,7 @@
 
 extern graph_t *build_first_topo();
 extern graph_t *build_simple_l2_switch_topo();
+extern graph_t *build_dualswitch_topo();
 graph_t *topo = NULL;
 
 

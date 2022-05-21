@@ -114,11 +114,23 @@ send_arp_broadcast_request(node_t *node,interface_t *oif,
                     char *ip_addr);
 
 
+/*
+================================
+        API for topologies
+================================
+*/
+void
+node_set_intf_l2_mode(node_t *node, char *intf_name, intf_l2_mode_t intf_l2_mode);
+
+void
+node_set_intf_vlan_membsership(node_t *node, char *intf_name, unsigned int vlan_id);
 
 
-/* =============================
+
+/* 
+=============================
         VLAN 
-   =============================
+=============================
 */
 
 #pragma pack (push, 1)
@@ -133,7 +145,7 @@ typedef struct vlan_8021q_hdr_{
 typedef struct vlan_ethernet_hdr_{
     mac_add_t dst_mac;
     mac_add_t src_mac;
-    vlan_8021q_hdr_t vlan_8021_q_hdr;
+    vlan_8021q_hdr_t vlan_8021q_hdr;
     unsigned short type;
     char payload[248];
     unsigned int FCS;
@@ -218,6 +230,17 @@ ALLOC_ETH_HDR_WITH_PAYLOAD(char *pkt, unsigned int pkt_size){
     free(temp);
     return eth_hdr;
 }
+
+ethernet_hdr_t *
+untag_pkt_with_vlan_id(ethernet_hdr_t *ethernet_hdr,
+                     unsigned int total_pkt_size,
+                     unsigned int *new_pkt_size);
+
+ethernet_hdr_t *
+tag_pkt_with_vlan_id(ethernet_hdr_t *ethernet_hdr,
+                     unsigned int total_pkt_size,
+                     int vlan_id,
+                     unsigned int *new_pkt_size);
 
 
 

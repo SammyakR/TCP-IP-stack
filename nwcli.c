@@ -132,9 +132,7 @@ nw_init_cli(){
         static param_t topology;
         init_param(&topology, CMD, "topology", show_nw_topology_handler,
                     0, INVALID, 0, "Dump Complete Network Topology");
-        libcli_register_param(show, &topology);
-    }
-        
+        libcli_register_param(show, &topology);   
         {
             /*show node*/    
              static param_t node;
@@ -146,7 +144,6 @@ nw_init_cli(){
                  static param_t node_name;
                  init_param(&node_name, LEAF, 0, 0, validate_node_extistence, STRING, "node-name", "Node Name");
                  libcli_register_param(&node, &node_name);
-
                 {
                     /*show node <node-name> arp*/
                     static param_t arp;
@@ -160,11 +157,11 @@ nw_init_cli(){
                     init_param(&mac, CMD, "mac", show_mac_handler, 0, INVALID, 0, "Dump Mac Table");
                     libcli_register_param(&node_name, &mac);
                     set_param_cmd_code(&mac, CMDCODE_SHOW_NODE_MAC_TABLE);
-                 }
+                }
                    
             }
         }
-
+    }
     
    {
         /*run node*/

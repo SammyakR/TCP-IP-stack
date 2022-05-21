@@ -74,6 +74,8 @@ typedef struct intf_nw_props_
     mac_add_t mac_add;
     intf_l2_mode_t intf_l2_mode;
     unsigned int vlans[MAX_VLAN_MEMBERSHIP];
+    bool_t is_ipadd_config_backup;
+
     bool_t is_ipadd_config;
     ip_add_t ip_add;
     char mask;
