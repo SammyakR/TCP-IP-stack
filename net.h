@@ -19,7 +19,7 @@ typedef struct ip_add_
 } ip_add_t;
 
 typedef struct mac_add_ {
-    char mac[8];
+    char mac[6];
 }mac_add_t;
 
 typedef struct arp_table_ arp_table_t;
@@ -124,7 +124,12 @@ char *
 pkt_buffer_shift_right(char *pkt, unsigned int pkt_size, 
                        unsigned int total_buffer_size);
 
+unsigned int
+get_access_intf_operating_vlan_id(interface_t *interface);
 
+bool_t
+is_trunk_interface_vlan_enabled(interface_t *interface,
+                                unsigned int vlan_id);
 #endif  /*__NET__*/
 
 

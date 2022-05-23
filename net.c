@@ -182,3 +182,35 @@ ip_addr_p_to_n(char *ip_addr)
     decimal_rep = htonl(decimal_rep);
     return decimal_rep;
 }
+
+
+/*
+================
+   VLAN 
+================
+*/
+
+unsigned int
+get_access_intf_operating_vlan_id(interface_t *interface){
+    if(IF_L2_MODE(interface) != ACCESS){
+        assert(0);
+    }
+    return interface->intf_nw_props.vlans[0];
+}
+
+bool_t
+is_trunk_interface_vlan_enabled(interface_t *interface,
+                                unsigned int vlan_id){
+    
+    if(IF_L2_MODE(interface) != TRUNK){
+        assert(0);
+    }
+
+    unsigned int i = 0;
+    for( ; i < MAX_VLAN_MEMBERSHIP; i++){
+        if(interface->intf_nw_props.vlans[i] == vlan_id)
+            return TRUE;
+    }
+
+    return FALSE;
+}

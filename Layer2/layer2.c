@@ -11,7 +11,8 @@ l2_switch_recv_frame(node_t *node, char *src_mac, char *if_name);
 
 static void
 promote_pkt_to_layer3(node_t *node, interface_t *interface,
-                         char *pkt, unsigned int pkt_size){
+                         char *pkt, unsigned int pkt_size,
+                         int L3_protocol_type){
 
     
 }
@@ -165,8 +166,8 @@ send_arp_broadcast_request(node_t *node,
         }
     }
     /*STEP 1 : Prepare eth hdr */
-    printf("hittin line 168\n");
     layer2_fill_with_broadcast_mac(ethernet_hdr->dst_mac.mac);
+    printf("---- %d -----", IS_MAC_BROADCAST_ADDR(ethernet_hdr->dst_mac.mac));
     memcpy(ethernet_hdr->src_mac.mac, IF_MAC(oif), sizeof(mac_add_t));
     ethernet_hdr->type=ARP_MSG;
 
@@ -212,8 +213,9 @@ process_arp_broadcast_request(node_t *node, interface_t *iif,
     ip_addr[15]='\0';
 
     if(strncmp(IF_IP(iif), ip_addr, 16)){
-        printf("%s : ARP BroadcasLayer2/layer2.o:t rq msg, Dst ip does not match %s did not match interface ip : %s\n",
-        node->node_name, ip_addr, IF_IP(iif));
+        printf("%s : ARP BroadcasLayer2/layer2.o:t rq msg, Dst ip does not"
+                        "match %s did not match interface ip : %s\n",
+                        node->node_name, ip_addr, IF_IP(iif));
         return;
     }
 
@@ -222,44 +224,7 @@ process_arp_broadcast_request(node_t *node, interface_t *iif,
 }
 
 
-void
-layer2_frame_recv(node_t *node, interface_t *interface, 
-                    char *pkt, unsigned int pkt_size){
-    
-    ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *)pkt;
-    if(l2_frame_recv_qualify_on_interface(interface, ethernet_hdr) == FALSE){
-        printf("L2 frame rejected\n");
-        return;
-    }
 
-    printf("L2 frame accepted");
-    if(IS_INTF_L3_MODE(interface)){
-        switch(ethernet_hdr->type){
-            case ARP_MSG:
-                {
-                    arp_hdr_t *arp_hdr = (arp_hdr_t *)(ethernet_hdr->payload);
-                    switch(arp_hdr->op_code){
-                        case ARP_BROAD_REQ:
-                            process_arp_broadcast_request(node, interface, ethernet_hdr);
-                            break;
-                        case ARP_REPLY:
-                            process_arp_reply_msg(node, interface, ethernet_hdr);
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                break;
-            default:
-                promote_pkt_to_layer3(node, interface, pkt, pkt_size);
-                break;
-        }
-    }
-    else if(IF_L2_MODE(interface) == ACCESS || IF_L2_MODE(interface) == TRUNK){
-        l2_switch_recv_frame(interface, pkt, pkt_size);
-    }
-
-}
 
 
 
@@ -268,8 +233,10 @@ tag_pkt_with_vlan_id(ethernet_hdr_t *ethernet_hdr,
                         unsigned int total_pkt_size,
                         int vlan_id,
                         unsigned int *new_pkt_size){
+
     unsigned int payload_size = 0;
     *new_pkt_size = 0;
+
     vlan_8021q_hdr_t *vlan_8021q_hdr =
         is_pkt_vlan_tagged(ethernet_hdr);
     
@@ -281,6 +248,7 @@ tag_pkt_with_vlan_id(ethernet_hdr_t *ethernet_hdr,
         return ethernet_hdr;
     }
 
+    /* If it is not already tagged */
     ethernet_hdr_t ethernet_hdr_old;
     memcpy((char *)&ethernet_hdr_old, (char*)ethernet_hdr,
             ETH_HDR_SIZE_EXCL_PAYLOAD - sizeof(ethernet_hdr_old.FCS));
@@ -288,11 +256,14 @@ tag_pkt_with_vlan_id(ethernet_hdr_t *ethernet_hdr,
     payload_size = total_pkt_size - ETH_HDR_SIZE_EXCL_PAYLOAD;
     vlan_ethernet_hdr_t *vlan_ethernet_hdr =
         (vlan_ethernet_hdr_t *)((char *)ethernet_hdr - sizeof(vlan_8021q_hdr_t));
-
+    printf("l2.c -- line 259\n");
     memset((char *)vlan_ethernet_hdr, 0,
         VLAN_ETH_HDR_SIZE_EXCL_PAYLOAD - sizeof(vlan_ethernet_hdr->FCS));
+    printf("l2.c -- line 262\n");
     memcpy(vlan_ethernet_hdr->dst_mac.mac, ethernet_hdr_old.dst_mac.mac, sizeof(mac_add_t));
+    printf("l2.c -- line 264\n");
     memcpy(vlan_ethernet_hdr->src_mac.mac, ethernet_hdr_old.src_mac.mac, sizeof(mac_add_t));
+    printf("l2.c -- line 266\n");
 
     vlan_ethernet_hdr->vlan_8021q_hdr.tpid = VLAN_8021Q_PROTO;
     vlan_ethernet_hdr->vlan_8021q_hdr.tci_pcp = 0;
@@ -300,6 +271,7 @@ tag_pkt_with_vlan_id(ethernet_hdr_t *ethernet_hdr,
     vlan_ethernet_hdr->vlan_8021q_hdr.tci_vid = (short)vlan_id;
 
     SET_COMMON_ETH_FCS((ethernet_hdr_t *)vlan_ethernet_hdr, payload_size, 0 );
+    printf("l2.c -- line 274\n");
     *new_pkt_size = total_pkt_size  + sizeof(vlan_8021q_hdr_t);
     return (ethernet_hdr_t *)vlan_ethernet_hdr;
 
@@ -480,4 +452,64 @@ node_set_intf_vlan_membsership(node_t *node, char *intf_name,
     assert(interface);
 
     interface_set_vlan(node, interface, vlan_id);
+}
+
+void
+layer2_frame_recv(node_t *node, interface_t *interface, 
+                    char *pkt, unsigned int pkt_size){
+    
+    unsigned int vlan_id_to_tag = 0;
+
+    ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *)pkt;
+    if(l2_frame_recv_qualify_on_interface(interface, ethernet_hdr, &vlan_id_to_tag) == FALSE){
+        printf("L2 frame rejected\n");
+        return;
+    }
+
+    printf("L2 frame accepted on node %s\n", node->node_name);
+    if(IS_INTF_L3_MODE(interface)){
+        printf("hit line 241\n");
+        switch(ethernet_hdr->type){
+            case ARP_MSG:
+                {
+                    arp_hdr_t *arp_hdr = (arp_hdr_t *)(ethernet_hdr->payload);
+                    switch(arp_hdr->op_code){
+                        case ARP_BROAD_REQ:
+                            printf("lin 248 -- \n");
+                            process_arp_broadcast_request(node, interface, ethernet_hdr);
+                            break;
+                        case ARP_REPLY:
+                            printf("line 252 -- \n");
+                            process_arp_reply_msg(node, interface, ethernet_hdr);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            case ETH_IP:
+                promote_pkt_to_layer3(node, interface, 
+                    GET_ETHERNET_HDR_PAYLOAD(ethernet_hdr),
+                    pkt_size - GET_ETH_HDR_SIZE_EXCL_PAYLOAD(ethernet_hdr), ETH_IP);
+            default:
+                break;
+        }
+    }
+    else if(IF_L2_MODE(interface) == ACCESS || IF_L2_MODE(interface) == TRUNK){
+        unsigned int new_pkt_size = 0;
+        printf(" line 270 \n");
+        if(vlan_id_to_tag){
+            printf("%d , %d ,%d\n", vlan_id_to_tag, new_pkt_size, pkt_size);
+            pkt = (char *)tag_pkt_with_vlan_id((ethernet_hdr_t *)pkt,
+                                                pkt_size, vlan_id_to_tag,
+                                                &new_pkt_size);
+            printf("%d , %d ,%d\n", vlan_id_to_tag, new_pkt_size, pkt_size);
+            assert(new_pkt_size != pkt_size);
+        }
+        l2_switch_recv_frame(interface, pkt, vlan_id_to_tag ? new_pkt_size : pkt_size);
+    }
+
+    else
+        return;
+
 }

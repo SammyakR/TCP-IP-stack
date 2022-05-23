@@ -132,7 +132,8 @@ nw_init_cli(){
         static param_t topology;
         init_param(&topology, CMD, "topology", show_nw_topology_handler,
                     0, INVALID, 0, "Dump Complete Network Topology");
-        libcli_register_param(show, &topology);   
+        libcli_register_param(show, &topology);
+        set_param_cmd_code(&topology, CMDCODE_SHOW_NW_TOPOLOGY);  
         {
             /*show node*/    
              static param_t node;

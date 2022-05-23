@@ -4,6 +4,7 @@
 #include "../graph.h"
 #include "layer2.h"
 #include "../gluethread/glthread.h"
+#include "comm.h"
 
 
 typedef struct mac_table_entry_{
@@ -120,14 +121,124 @@ l2_switch_perform_mac_learning(node_t *node, char *src_mac, char *if_name){
     }
 }
 
+
+static bool_t
+l2_switch_send_pkt_out(char *pkt, unsigned int pkt_size,
+                        interface_t *oif){
+    
+    assert(!IS_INTF_L3_MODE(oif));
+
+    intf_l2_mode_t intf_l2_mode = IF_L2_MODE(oif);
+    
+    if(intf_l2_mode == L2_MODE_UNKNOWN){
+        return FALSE;
+    }
+
+    ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t*)pkt;
+
+    vlan_8021q_hdr_t *vlan_8021q_hdr =
+        is_pkt_vlan_tagged(ethernet_hdr);
+
+    switch(intf_l2_mode){
+        case ACCESS:
+            {
+                unsigned int intf_vlan_id =
+                    get_access_intf_operating_vlan_id(oif);
+                
+                /*Case 1 : If interface is operating in ACCESS mode, but
+                 not in any vlan, and pkt is also untagged, then simply
+                 forward it. This is default Vlan unaware case*/
+                if(!intf_vlan_id && !vlan_8021q_hdr){
+                    send_pkt_out(pkt, pkt_size, oif);
+                    return FALSE;
+                }
+
+                /*Case 2 : if oif is VLAN aware, but pkt is untagged, simply
+                 drop the packet. This is not an error, it is a L2 switching 
+                 behavior*/
+                if(intf_vlan_id && !vlan_8021q_hdr){
+                    return FALSE;
+                }
+
+                /*Case 3 : If oif is VLAN AWARE, and pkt is also tagged, 
+                  forward the frame only if vlan IDs matches after untagging
+                  the frame*/
+                if(vlan_8021q_hdr && (intf_vlan_id == GET_802_1Q_VLAN_ID(vlan_8021q_hdr))){
+                    
+                    unsigned int new_pkt_size = 0;
+                    ethernet_hdr = untag_pkt_with_vlan_id(ethernet_hdr, 
+                                                        pkt_size, &new_pkt_size);
+                    return TRUE;
+                }
+
+                /*case 4 : if oif is vlan unaware but pkt is vlan tagged, 
+                 simply drop the packet.*/
+                if(!intf_vlan_id && vlan_8021q_hdr){
+                    return FALSE;
+                }
+
+            }
+        break;
+        case TRUNK:
+            {
+                unsigned int pkt_vlan_id =0;
+                if(vlan_8021q_hdr){
+                    pkt_vlan_id = GET_802_1Q_VLAN_ID(vlan_8021q_hdr);
+                }
+
+                if(pkt_vlan_id && 
+                    is_trunk_interface_vlan_enabled(oif, pkt_vlan_id)){
+
+                        send_pkt_out(pkt, pkt_size, oif);
+                        return TRUE;
+                }
+
+                return FALSE;
+            }
+            break;
+        
+        case L2_MODE_UNKNOWN:
+            break;
+        default:
+            ;
+        return FALSE;
+    }
+}
+
+
+static bool_t 
+l2_switch_flood_pkt_out(node_t *node, interface_t *exempted_intf,
+                        char *pkt, unsigned int pkt_size){
+
+    interface_t *oif = NULL;
+    unsigned int i = 0;
+
+    char *pkt_copy = NULL;
+    char *temp_pkt = calloc(1, MAX_PACKET_BUFFER_SIZE);
+
+    pkt_copy = temp_pkt + MAX_PACKET_BUFFER_SIZE - pkt_size;
+
+    for( ; i < MAX_INTF_PER_NODE; i++){
+        
+        oif = node->intf[i];
+        if(!oif) break;
+        if(oif == exempted_intf) continue;
+        
+        memcpy(pkt_copy, pkt, pkt_size);
+        l2_switch_send_pkt_out(pkt_copy, pkt_size, oif);
+    }
+    free(temp_pkt);
+}
+
+
 static void
 l2_switch_forward_frame(node_t *node, interface_t *recv_intf,
-                        char *pkt, unsigned int pkt_size){
+                        ethernet_hdr_t* ethernet_hdr, unsigned int pkt_size){
     
     /* If dst mac is braodcast mac*/
-    ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *)pkt;
+    //ethernet_hdr_t *ethernet_hdr = (ethernet_hdr_t *)pkt;
     if(IS_MAC_BROADCAST_ADDR(ethernet_hdr->dst_mac.mac)){
-        send_pkt_flood_l2_intf_only(node, recv_intf, pkt, pkt_size);
+        l2_switch_flood_pkt_out(node, recv_intf, (char*)ethernet_hdr, pkt_size);
         return;
     }
 
@@ -135,7 +246,7 @@ l2_switch_forward_frame(node_t *node, interface_t *recv_intf,
         mac_table_lookup(NODE_MAC_TABLE(node), ethernet_hdr->dst_mac.mac);
 
     if(!mac_table_entry){
-        send_pkt_flood_l2_intf_only(node, recv_intf, pkt,pkt_size);
+        l2_switch_flood_pkt_out(node, recv_intf, (char*)ethernet_hdr,pkt_size);
         return;
     }
 
@@ -144,7 +255,7 @@ l2_switch_forward_frame(node_t *node, interface_t *recv_intf,
     if(!oif){
         return;
     }
-    send_pkt_out(pkt, pkt_size, oif);
+    l2_switch_send_pkt_out((char *)ethernet_hdr, pkt_size, oif);
 
 }
 
@@ -160,5 +271,7 @@ l2_switch_recv_frame(interface_t *interface,
     l2_switch_perform_mac_learning(node, src_mac, interface->if_name);
     l2_switch_forward_frame(node, interface, pkt, pkt_size);
 
-
 }
+
+
+
